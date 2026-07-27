@@ -1,0 +1,31 @@
+.env.example
+  s_7d7f19c3d1c539::t_2d94c945bbc1b9 1-8
+.gitignore
+  s_7d7f19c3d1c539::t_e73aeb834f96a1 1-2
+go.mod
+  s_7d7f19c3d1c539::t_de446be52e5ce3 1-18
+go.sum
+  s_7d7f19c3d1c539::t_5d23c9bf358084 1-24
+main_test.go
+  s_7d7f19c3d1c539::t_72d633be6dac37 1-43
+README.md
+  s_7d7f19c3d1c539::t_2ee8c65820ce2f 1-124
+main.go
+  s_7d7f19c3d1c539::t_bc4ba7465928ae 1-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8d469d0e198bed2881cb5e2b3793a3ebf07e5c64",
+  "prompts": {},
+  "sessions": {
+    "s_7d7f19c3d1c539": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51c7b2c6-7ddf-4b96-9bc3-47cee419804c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "mrifai-cata <muhammad.rifai@trycata.com>"
+    }
+  }
+}
