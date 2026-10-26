@@ -1,7 +1,7 @@
 # mcp-mysql-go
 
 Read-only MySQL MCP server, Go port of [`../mcp-mysql-nodejs`](../mcp-mysql-nodejs).
-Same three tools (`list_tables`, `describe_table`, `query`), same env vars, same
+Same tools (`list_tables`, `describe_table`, `query`, opt-in `execute`), same env vars, same
 guards. Why it is shaped this way:
 [ADR 001](../mcp-mysql-nodejs/docs/adr-001-read-only-mysql-mcp.md).
 
@@ -66,6 +66,25 @@ sql:    SELECT id, email FROM users WHERE created_at > ? LIMIT 20
 params: ["2026-01-01"]
 ```
 
+## Write mode
+
+Writes are off by default. If you set `DBALLOWWRITE=true`, the server
+registers a fourth tool, `execute`. The `query` tool stays read-only.
+
+| Tool | Input | Returns |
+|------|-------|---------|
+| `execute` | `sql`, optional `params[]` | `{ affectedRows, insertId }` |
+
+Each `execute` call runs one statement and commits at once. There is no undo.
+The DB user grants set the real limit, so grant only what you need:
+
+```sql
+GRANT SELECT, INSERT, UPDATE ON mydb.* TO 'mcp_rw'@'%';
+```
+
+Query results reach the model as text, so a hostile row can steer the next
+`execute` call. Use write mode only on local or dev databases.
+
 ## How it works
 
 ```
@@ -111,7 +130,7 @@ Differences from the Node version, all of them forced by the language:
   sources `.env` from the shell.
 
 Everything else is unchanged: three tools, one `readOnlyQuery` funnel, stdio
-transport, no write path, and the same three read-only guards (driver
+transport, the same opt-in `execute` tool, and the same three read-only guards (driver
 `MultiStatements: false`, the `READ ONLY` transaction, and the DB grants — the
 grants being the real boundary).
 
@@ -120,5 +139,5 @@ grants being the real boundary).
 Same as the Node version: one database per process, blunt row/time caps,
 `information_schema` row counts are estimates on InnoDB, and query results reach
 the model as text — a row containing "ignore previous instructions…" is prompt
-injection with a direct line to the next tool call, which is the main reason
-there is no write path.
+injection with a direct line to the next tool call, which is the reason
+the write path is off by default.

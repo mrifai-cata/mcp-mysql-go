@@ -18,10 +18,11 @@ import (
 )
 
 var (
-	db        *sql.DB
-	dbName    string
-	rowLimit  int
-	timeoutMS int
+	db         *sql.DB
+	dbName     string
+	rowLimit   int
+	timeoutMS  int
+	allowWrite bool
 )
 
 func env(key, def string) string {
@@ -46,6 +47,8 @@ func setup() error {
 	if timeoutMS, err = strconv.Atoi(env("DBTIMEOUTMS", "5000")); err != nil || timeoutMS < 1 {
 		return fmt.Errorf("DBTIMEOUTMS must be a positive integer, got %q", os.Getenv("DBTIMEOUTMS"))
 	}
+
+	allowWrite = os.Getenv("DBALLOWWRITE") == "true"
 
 	cfg := mysql.NewConfig()
 	cfg.Net = "tcp"
@@ -190,6 +193,36 @@ func runQuery(ctx context.Context, _ *mcp.CallToolRequest, in queryArgs) (*mcp.C
 	}), nil, nil
 }
 
+type execResult struct {
+	AffectedRows int64 `json:"affectedRows"`
+	InsertID     int64 `json:"insertId"`
+}
+
+// Write path, only reachable through the `execute` tool, which only exists when
+// DBALLOWWRITE=true. Still one statement per call (MultiStatements false).
+// The DB user's grants decide what actually goes through.
+func writeQuery(ctx context.Context, query string, args ...any) (*execResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeoutMS)*time.Millisecond)
+	defer cancel()
+
+	res, err := db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	out := &execResult{}
+	out.AffectedRows, _ = res.RowsAffected() // mysql driver never errors on these
+	out.InsertID, _ = res.LastInsertId()
+	return out, nil
+}
+
+func runExecute(ctx context.Context, _ *mcp.CallToolRequest, in queryArgs) (*mcp.CallToolResult, any, error) {
+	res, err := writeQuery(ctx, in.SQL, in.Params...)
+	if err != nil {
+		return nil, nil, err
+	}
+	return asText(res), nil, nil
+}
+
 func main() {
 	log.SetFlags(0) // stderr only: anything on stdout that isn't JSON-RPC corrupts the stream
 	if err := setup(); err != nil {
@@ -219,6 +252,17 @@ func main() {
 				"Results are capped at %d rows and %dms — add LIMIT and WHERE yourself.",
 			dbName, rowLimit, timeoutMS),
 	}, runQuery)
+
+	if allowWrite {
+		mcp.AddTool(s, &mcp.Tool{
+			Name:  "execute",
+			Title: "Run a write SQL statement",
+			Description: fmt.Sprintf(
+				"Run one INSERT/UPDATE/DELETE/DDL statement against %s. Commits immediately, no undo. "+
+					"Use `query` for reads. Timeout %dms. sql takes ? placeholders filled from params.",
+				dbName, timeoutMS),
+		}, runExecute)
+	}
 
 	if err := s.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 		log.Fatal(err)
