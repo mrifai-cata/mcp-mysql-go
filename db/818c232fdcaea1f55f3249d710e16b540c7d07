@@ -1,0 +1,23 @@
+.env.example
+  s_e969a9b60e6017::t_5bebfe6dd2fdd3 9-10
+README.md
+  s_e969a9b60e6017::t_e7497fb8ea67b6 4,69-87,133,142-143
+main.go
+  s_e969a9b60e6017::t_0aab62a22f62c8 21-25,51-52,196-225,256-266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db818c232fdcaea1f55f3249d710e16b540c7d07",
+  "prompts": {},
+  "sessions": {
+    "s_e969a9b60e6017": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0358c89-004b-46fb-9965-936207bc2756",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "mrifai-cata <muhammad.rifai@trycata.com>"
+    }
+  }
+}
